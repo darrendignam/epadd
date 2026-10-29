@@ -143,7 +143,9 @@ log "building $output_name with jpackage"
 # in its output directory is renamed to the one name the rest of the pipeline
 # expects.
 produced=$(find "$output_dir" -maxdepth 1 -type f -name "*.$type")
-case $(printf '%s\n' "$produced" | grep -c .) in
+# grep exits non-zero when it counts nothing, which under set -e would abort
+# here rather than reach the message below.
+case $(printf '%s\n' "$produced" | grep -c . || true) in
     1) ;;
     0) die "jpackage produced no .$type" ;;
     *) die "jpackage produced more than one .$type:

@@ -163,13 +163,20 @@ read and run outside Actions:
 | `sign-macos.sh` | imports the signing identity, and notarizes a disk image |
 | `release-notes.sh` | writes the body of the GitHub release |
 
-Three details in there exist because of the environment rather than by choice.
+Four details in there exist because of the environment rather than by choice.
 Maven and Ant are installed as `.cmd` wrappers on the Windows runners, which
 bash does not resolve from the bare name, so every call goes through
 `resolve_tool`. The JDK cannot read MSYS paths such as `/d/a/epadd/epadd`, so
-absolute paths handed to a Java tool go through `native_path` first. And the
+absolute paths handed to a Java tool go through `native_path` first. The
 workflows invoke each script as `bash <script>` rather than directly, because a
 Windows checkout does not carry the executable bit.
+
+And the scripts have to run on the bash 3.2 that macOS still ships, which is
+stricter than it looks: expanding an empty array under `set -u` is an unbound
+variable error there, though it is harmless on bash 4.4 and later. Optional
+Maven arguments are therefore spelled out at each call site instead of being
+collected into an array that might end up empty. Associative arrays, `mapfile`
+and `printf -v` are all unavailable for the same reason.
 
 ## Running it locally
 

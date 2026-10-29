@@ -65,7 +65,6 @@ log "installing the parent POM"
 log "cleaning previous output"
 "$mvn" "${maven_args[@]}" clean
 
-war_args=()
 if $provenance; then
     # The enforcer rule refuses to build from a modified checkout, and the error
     # it raises arrives minutes later and does not say what was modified.
@@ -80,10 +79,6 @@ if $provenance; then
     log "recording git provenance from the pristine checkout"
     "$mvn" "${maven_args[@]}" validate -Dskip.generate.git.props=false
     require_file target/classes/git.properties
-    # The prod profile turns the enforcer rule on, which demands git.dirty=false.
-    # A command line property beats the one the profile sets, so generation stays
-    # off and the git.properties written above is what ends up in the WAR.
-    war_args+=(-Pprod -Dskip.generate.git.props=true)
 fi
 
 log "stamping version $version"
@@ -96,7 +91,18 @@ log "building the discovery WAR"
 "$mvn" "${maven_args[@]}" -f pom-discovery.xml package -DskipTests
 
 log "building the full WAR"
-"$mvn" "${maven_args[@]}" package "${war_args[@]}"
+if $provenance; then
+    # The prod profile turns the enforcer rule on, which demands git.dirty=false.
+    # A command line property beats the one the profile sets, so generation stays
+    # off and the git.properties written earlier is what ends up in the WAR.
+    #
+    # Spelling both invocations out rather than collecting the extra arguments in
+    # an array keeps this working on the bash 3.2 that macOS ships, where
+    # expanding an empty array under set -u is an unbound variable error.
+    "$mvn" "${maven_args[@]}" package -Pprod -Dskip.generate.git.props=true
+else
+    "$mvn" "${maven_args[@]}" package
+fi
 
 require_file target/epadd-0.0.1-SNAPSHOT.war
 require_file target/epadd-discovery-0.0.1-SNAPSHOT.war
