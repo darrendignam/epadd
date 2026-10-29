@@ -39,6 +39,15 @@ public class MboxPreservationExportTest {
     }
 
     @Test
+    public void afternoonMessageKeepsItsHourInTheMboxSeparatorLine() throws Exception {
+        // Every other fixture here uses a morning hour, where a 12-hour and a 24-hour
+        // pattern agree, so the "From " line was formatted with hh for years without
+        // anything noticing. Like its neighbours this assumes a UTC default timezone.
+        File inputMbox = temporaryFolder.newFile("afternoon-input.mbox");
+        assertMboxPreservationRoundTrip(inputMbox, afternoonMbox());
+    }
+
+    @Test
     public void importedMultipartAlternativeMboxExportsPlainAndHtmlParts() throws Exception {
         File inputMbox = temporaryFolder.newFile("multipart-alternative-input.mbox");
         ExportedMbox exported = exportMboxAfterImport(inputMbox, multipartAlternativeMbox(), false);
@@ -285,6 +294,21 @@ public class MboxPreservationExportTest {
                 "\n" +
                 "Hello Bob,\n" +
                 "This is a preservation export test.\n";
+    }
+
+    private String afternoonMbox() {
+        return "From - Tue Jan 02 15:04:05 2024\n" +
+                "From: Alice Example <alice@example.org>\n" +
+                "To: Bob Example <bob@example.org>\n" +
+                "Date: Tue, 02 Jan 2024 15:04:05 +0000\n" +
+                "Subject: Afternoon preservation round trip\n" +
+                "Message-ID: <preservation-afternoon-1@example.org>\n" +
+                "MIME-Version: 1.0\n" +
+                "Content-Type: text/plain; charset=UTF-8\n" +
+                "Content-Transfer-Encoding: 7bit\n" +
+                "\n" +
+                "Hello Bob,\n" +
+                "This message was sent in the afternoon.\n";
     }
 
     private String multipartAlternativeMbox() {
