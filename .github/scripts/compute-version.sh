@@ -58,6 +58,11 @@ if [ -n "$tag" ] && [[ $tag =~ $SEMVER_RE ]]; then
     # BASH_REMATCH[1..3] are the major, minor and patch captures; everything
     # after them is a prerelease or build identifier jpackage will not accept.
     installer_version="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
+    # jpackage refuses a zero major version when building a .dmg, so a tag like
+    # v0.1.0 would take both macOS jobs several minutes to reject. Say so now.
+    if [ "${BASH_REMATCH[1]}" = 0 ]; then
+        die "$tag cannot be released: macOS rejects a major version of 0, so the tag needs to start at v1"
+    fi
     if [ -n "${BASH_REMATCH[5]-}" ]; then
         is_prerelease=true
     fi

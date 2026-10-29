@@ -66,7 +66,9 @@ application reports, and it is what the asset filenames carry.
 
 The **installer version** is the numeric part of the tag only. jpackage accepts
 nothing else for `--app-version`, and on macOS it additionally insists on a major
-component greater than zero, so `v11.1.4-beta.1` becomes `11.1.4`. Builds that are
+component greater than zero, so `v11.1.4-beta.1` becomes `11.1.4`. A tag like
+`v0.1.0` is therefore refused outright, in the version job rather than minutes
+later in the two macOS jobs. Builds that are
 not releases have no version to work from and fall back to a placeholder of
 `1.0.0`; the real identity of such a build is in the display version, which is
 the branch or pull request plus the short commit hash.
