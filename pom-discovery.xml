@@ -122,7 +122,6 @@
 					<include>profile-block.jspf</include>
 					<include>query-generator.jsp</include>
 					<include>div_status.jspf</include>
-					<include>error.jsp</include>
 					<include>getArchive.jspf</include>
 					<include>index.jsp</include>
 					<include>about.jsp</include>
