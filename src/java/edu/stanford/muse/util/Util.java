@@ -460,8 +460,11 @@ public static void aggressiveWarn(String message, long sleepMillis, Logger log)
 	}
 
 	public static String removeMetaTag(String contents){
-		Pattern p = Pattern.compile("<meta[^>]*>(.*?)/>",
-				Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
+		// Must not span to a later "/>": with DOTALL the old lazy "(.*?)/>" matched from
+		// the <meta> to the next self-closing tag anywhere in the document and deleted
+		// everything between, which silently removed message body text.
+		Pattern p = Pattern.compile("<meta[^>]*?/?>",
+				Pattern.CASE_INSENSITIVE);
 		return p.matcher(contents).replaceAll("");
 	}
 	public static void copy_directory(String source,String target) throws IOException {
@@ -594,8 +597,8 @@ public static void aggressiveWarn(String message, long sleepMillis, Logger log)
 	{
 		File f = new File(filename);
 		long len = f.length();
-		if (len >= (1L << 32))
-			throw new RuntimeException("File " + filename + " is larger than 2^32 bytes: " + len);
+		if (len >= (1L << 31))
+			throw new RuntimeException("File " + filename + " is larger than 2^31 bytes: " + len);
 
 		BufferedInputStream is = new BufferedInputStream(new FileInputStream(f));
 
@@ -1149,18 +1152,12 @@ public static void aggressiveWarn(String message, long sleepMillis, Logger log)
 	public static String[] splitIntoTwo(String s, char c)
 	{
 		int idx = s.indexOf(c);
-		if (idx < 1)
+		if (idx < 0)
 			return new String[] { s, "" };
 
 		String[] result = new String[2];
 
-		result[0] = (idx > 0) ? s.substring(0, idx - 1) : ""; // substring
-																// should have
-																// accepted args
-																// (0, -1) to
-																// give an empty
-																// string, but
-																// it doesn't.
+		result[0] = s.substring(0, idx);
 		result[1] = s.substring(idx + 1); // this will always work even if the
 											// last character is c, because
 											// "abc".substring(3) returns ""
@@ -1899,9 +1896,14 @@ public static void aggressiveWarn(String message, long sleepMillis, Logger log)
     }
 
 	public static String escapeJSON(String subject) {
-		String s = subject.replace("\t","\\\t");
-		s = s.replace("\r","\\\r");
-		s=s.replace("\n","\\\n");
+		if (subject == null)
+			return null;
+		// Order matters: the backslash has to be escaped before anything that introduces one.
+		String s = subject.replace("\\", "\\\\");
+		s = s.replace("\"", "\\\"");
+		s = s.replace("\t", "\\t");
+		s = s.replace("\r", "\\r");
+		s = s.replace("\n", "\\n");
 		return s;
 	}
 
@@ -2704,7 +2706,8 @@ public static void aggressiveWarn(String message, long sleepMillis, Logger log)
 		for (String s : list)
 		{
 			int matchLen = 0;
-			for (; matchLen < commonPrefix.length(); matchLen++)
+			int maxLen = Math.min(s.length(), commonPrefix.length());
+			for (; matchLen < maxLen; matchLen++)
 			{
 				if (s.charAt(matchLen) != commonPrefix.charAt(matchLen))
 					break;
