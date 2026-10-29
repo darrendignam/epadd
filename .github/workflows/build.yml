@@ -84,6 +84,10 @@ jobs:
     name: ${{ matrix.platform }}
     needs: version
     runs-on: ${{ matrix.os }}
+    # A full build takes about ten minutes. This is here so that a step which
+    # hangs instead of failing, as the WiX installer did, gives up in under an
+    # hour rather than occupying a runner for the default six.
+    timeout-minutes: 45
     strategy:
       # One platform failing should not hide the result on the others.
       fail-fast: false
@@ -202,15 +206,32 @@ jobs:
 
       - name: Install WiX
         if: matrix.platform == 'windows-arm64'
+        shell: pwsh
         # jpackage builds an msi by calling WiX 3, which the x86_64 image carries
-        # but the ARM one does not. WiX is a .NET Framework application and runs
-        # under emulation here, which is fine because it only assembles the
-        # installer and does not go into it.
+        # but the ARM one does not.
+        #
+        # The binaries zip is unpacked rather than installed with
+        # "choco install wixtoolset", because that runs the WiX MSI bootstrapper,
+        # which hung indefinitely on this image rather than failing. candle.exe
+        # and light.exe are x86 and run under emulation, which is harmless: they
+        # assemble the installer and do not end up inside it.
+        env:
+          WIX_URL: https://github.com/wixtoolset/wix3/releases/download/wix3141rtm/wix314-binaries.zip
+          WIX_SHA256: 6ac824e1642d6f7277d0ed7ea09411a508f6116ba6fae0aa5f2c7daa2ff43d31
         run: |
-          choco install wixtoolset --version 3.14.1 --no-progress --yes
-          wix_bin=$(find '/c/Program Files (x86)' -maxdepth 2 -type d -name bin -path '*WiX Toolset*' | head -1)
-          [ -n "$wix_bin" ] || { echo "WiX bin directory not found after install" >&2; exit 1; }
-          cygpath -w "$wix_bin" >> "$GITHUB_PATH"
+          $ErrorActionPreference = 'Stop'
+          $zip = Join-Path $env:RUNNER_TEMP 'wix314-binaries.zip'
+          $dir = Join-Path $env:RUNNER_TEMP 'wix'
+          Invoke-WebRequest -Uri $env:WIX_URL -OutFile $zip
+          $actual = (Get-FileHash -Path $zip -Algorithm SHA256).Hash.ToLower()
+          if ($actual -ne $env:WIX_SHA256) {
+              throw "WiX checksum mismatch: expected $env:WIX_SHA256, got $actual"
+          }
+          Expand-Archive -Path $zip -DestinationPath $dir -Force
+          if (-not (Test-Path (Join-Path $dir 'candle.exe'))) {
+              throw 'candle.exe is missing after extracting WiX'
+          }
+          $dir | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
 
       - name: Build the Windows executable
         # Only on x86_64: launch4j emits a 32 bit x86 binary whatever it runs on,
