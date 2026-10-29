@@ -43,6 +43,7 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -288,10 +289,19 @@ public class EmailUtils {
         return result;
     }
 
-    //	From - Tue Sep 29 11:38:30 2009
-    private static final SimpleDateFormat sdf1 = new SimpleDateFormat("EEE MMM dd hh:mm:ss yyyy");
-    // Date: Wed, 2 Apr 2003 11:53:17 -0800 (PST)
-    private static final SimpleDateFormat sdf2 = new SimpleDateFormat("EEE, dd MMM yyyy hh:mm:ss");
+    /* The mbox "From " separator line, e.g. From - Tue Sep 29 11:38:30 2009.
+     *
+     * HH, not hh: hh is clock-hour-of-am-pm, so with no am/pm marker every afternoon
+     * message was written twelve hours early. Locale.ENGLISH because this line is a
+     * de-facto English ctime format whatever the host locale is. DateTimeFormatter
+     * rather than SimpleDateFormat because this is reached from concurrent request
+     * threads and SimpleDateFormat is not thread safe.
+     *
+     * The zone stays the host's, which is what this has always done. Whether a
+     * preservation export should pin the zone so an archive exports identically
+     * everywhere is a separate question, not settled here. */
+    private static final DateTimeFormatter MBOX_FROM_LINE_FORMAT =
+            DateTimeFormatter.ofPattern("EEE MMM dd HH:mm:ss yyyy", Locale.ENGLISH);
     public static Random rng = new Random(0);
 
     static {
@@ -304,7 +314,7 @@ public class EmailUtils {
         /* http://www.ietf.org/rfc/rfc1521.txt is the official ref. */
         String frontier = "";
         Date d = ed.date != null ? ed.date : new Date();
-        String s = sdf1.format(d);
+        String s = MBOX_FROM_LINE_FORMAT.format(d.toInstant().atZone(ZoneId.systemDefault()));
         mbox.println("From - " + s);
         mbox.println("X-ePADD-Folder: " + ed.folderName);
         if (!Util.nullOrEmpty(annotationManager.getAnnotation(ed.getUniqueId()))) {
