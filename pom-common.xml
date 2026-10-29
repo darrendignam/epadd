@@ -454,6 +454,17 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>3.6.0</version>
+                    <configuration>
+                        <!-- The mbox "From " separator line carries no timezone, so
+                             the exporter writes it in the timezone the JVM runs in,
+                             and the preservation round trip fixtures spell that line
+                             out as the UTC rendering of their own Date header. The
+                             timezone has to be set before the JVM starts, because
+                             javamail caches a date formatter the first time a message
+                             is parsed, which happens in whichever test class runs
+                             first. -->
+                        <argLine>-Duser.timezone=UTC</argLine>
+                    </configuration>
                 </plugin>
             </plugins>
         </pluginManagement>
