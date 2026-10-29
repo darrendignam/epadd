@@ -62,9 +62,18 @@ if [ -n "$tag" ] && [[ $tag =~ $SEMVER_RE ]]; then
         is_prerelease=true
     fi
 else
-    # Slashes appear in pull request refs such as 42/merge and cannot go into a
-    # filename, so they become dashes.
-    display_version="${ref_name//\//-}-${sha:0:7}"
+    case $ref_name in
+        */merge)
+            # On a pull request the ref name is "<number>/merge", which would
+            # otherwise read as "42-merge" in every filename.
+            slug=pr-${ref_name%%/*}
+            ;;
+        *)
+            # Branch names can contain slashes, which a filename cannot.
+            slug=${ref_name//\//-}
+            ;;
+    esac
+    display_version="$slug-${sha:0:7}"
     installer_version=$DEV_INSTALLER_VERSION
 fi
 
