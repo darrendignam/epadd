@@ -2806,6 +2806,28 @@ public static void aggressiveWarn(String message, long sleepMillis, Logger log)
 		oos.close();
 	}
 
+	/** Resolves a caller-supplied path against baseDir, returning null unless the result stays
+	 * inside baseDir. Callers must treat null as a rejection.
+	 *
+	 * Testing the string for ".." is not sufficient: File.separator is a backslash on Windows
+	 * while the Win32 APIs accept forward slashes just as readily, so a "../" payload never
+	 * matches a separator-based check there. Absolute paths and empty input are rejected too.
+	 *
+	 * This blocks traversal via "..". It does not resolve symlinks, so it does not defend
+	 * against a symlink already planted inside baseDir. */
+	public static Path resolveWithinDirectory(String baseDir, String untrustedRelativePath)
+	{
+		if (nullOrEmpty(baseDir) || untrustedRelativePath == null)
+			return null;
+		try {
+			Path base = Paths.get(baseDir).toAbsolutePath().normalize();
+			Path resolved = base.resolve(untrustedRelativePath).normalize();
+			return resolved.startsWith(base) ? resolved : null;
+		} catch (InvalidPathException e) {
+			return null;
+		}
+	}
+
 	public static Serializable readObjectFromFile(String filename) throws IOException, ClassNotFoundException
 	{
 		ObjectInputStream ois = new ObjectInputStream(new FileInputStream(filename));

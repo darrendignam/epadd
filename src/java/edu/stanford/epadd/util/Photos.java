@@ -36,12 +36,6 @@ public class Photos
 			return;
 		}
 
-		if (filename.contains(".." + File.separator)) // avoid file injection!
-		{
-			log.warn("File traversal attack !? Disallowing serveFile for illegal filename: " + filename);
-			response.sendError(HttpServletResponse.SC_FORBIDDEN);
-			return;
-		}
 		filename = JSPHelper.convertRequestParamToUTF8(filename);
 
 		// the request always has /. On Windows we may need to change that to \
@@ -78,8 +72,18 @@ public class Photos
 		}
 
 		// could check if user is authorized here... or get the userKey directly from session
+		// The containment check happens here, after the separator conversion above, because
+		// checking the raw parameter for ".." + File.separator missed "../" on Windows and
+		// that conversion then turned it into the traversal the check was meant to stop.
+		java.nio.file.Path resolved = Util.resolveWithinDirectory(baseDir, filePath.substring(baseDir.length()));
+		if (resolved == null)
+		{
+			log.warn("File traversal attack !? Disallowing serveFile for illegal filename: " + filename);
+			response.sendError(HttpServletResponse.SC_FORBIDDEN);
+			return;
+		}
 		// log.info("Serving image from: " + filePath + " and filename is: " + filename);
-		JSPHelper.writeFileToResponse(session, response, filePath, true /* asAttachment */);
+		JSPHelper.writeFileToResponse(session, response, resolved.toString(), true /* asAttachment */);
 	}
 
 	public static void main(String[] args) {

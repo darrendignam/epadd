@@ -851,17 +851,18 @@ public class JSPHelper {
 		assert archive!=null: new AssertionError("ArchiveID not passed to serveAttachment.jsp");
 		String baseDir = archive.baseDir;
 
-		if (filename.contains(".." + File.separator)) // avoid file injection!
+
+		// could check if user is authorized here... or get the userKey directly from session
+
+		String blobsDir = baseDir + File.separator + Archive.BAG_DATA_FOLDER + File.separator + Archive.BLOBS_SUBDIR;
+		java.nio.file.Path resolved = Util.resolveWithinDirectory(blobsDir, filename);
+		if (resolved == null)
 		{
 			log.warn("File traversal attack !? Disallowing serveFile for illegal filename: " + filename);
 			response.sendError(HttpServletResponse.SC_FORBIDDEN);
 			return;
 		}
-
-		// could check if user is authorized here... or get the userKey directly from session
-
-		String filePath = baseDir + File.separator + Archive.BAG_DATA_FOLDER + File.separator + Archive.BLOBS_SUBDIR + File.separator + filename;
-		writeFileToResponse(session, response, filePath, true /* asAttachment */);
+		writeFileToResponse(session, response, resolved.toString(), true /* asAttachment */);
 	}
 
 	/** serve up a file from the cache_dir */
@@ -871,17 +872,18 @@ public class JSPHelper {
 		String filename = request.getParameter("file");
 		filename = convertRequestParamToUTF8(filename);
 		String baseDir = (String) getSessionAttribute(session, "cacheDir");
-		if (filename.contains(".." + File.separator)) // avoid file injection!
+
+		// could check if user is authorized here... or get the userKey directly from session
+
+		String imagesDir = baseDir + File.separator + Archive.BAG_DATA_FOLDER + File.separator + Archive.IMAGES_SUBDIR;
+		java.nio.file.Path resolved = Util.resolveWithinDirectory(imagesDir, filename);
+		if (resolved == null)
 		{
 			log.warn("File traversal attack !? Disallowing serveFile for illegal filename: " + filename);
 			response.sendError(HttpServletResponse.SC_FORBIDDEN);
 			return;
 		}
-
-		// could check if user is authorized here... or get the userKey directly from session
-
-		String filePath = baseDir + File.separator + Archive.BAG_DATA_FOLDER + File.separator + Archive.IMAGES_SUBDIR + File.separator + filename;
-		writeFileToResponse(session, response, filePath, true /* asAttachment */);
+		writeFileToResponse(session, response, resolved.toString(), true /* asAttachment */);
 	}
 
 	/** serve up a file from the temp dir, mainly used for serving exported mbox files*/
@@ -897,17 +899,17 @@ public class JSPHelper {
 		assert archive!=null: new AssertionError("ArchiveID not passed to serveTemp.jsp");
 		String baseDir = archive.baseDir;
 
-		if (filename.contains(".." + File.separator)) // avoid file injection!
+
+		// could check if user is authorized here... or get the userKey directly from session
+
+		java.nio.file.Path resolved = Util.resolveWithinDirectory(Archive.TEMP_SUBDIR, filename);
+		if (resolved == null)
 		{
 			log.warn("File traversal attack !? Disallowing serveFile for illegal filename: " + filename);
 			response.sendError(HttpServletResponse.SC_FORBIDDEN);
 			return;
 		}
-
-		// could check if user is authorized here... or get the userKey directly from session
-
-		String filePath = Archive.TEMP_SUBDIR + File.separator + filename;
-		writeFileToResponse(session, response, filePath, true /* asAttachment */, archive);
+		writeFileToResponse(session, response, resolved.toString(), true /* asAttachment */, archive);
 	}
 
 
