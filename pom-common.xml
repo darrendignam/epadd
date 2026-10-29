@@ -441,7 +441,44 @@
     <build>
         <defaultGoal>install</defaultGoal>
         <sourceDirectory>src/java</sourceDirectory>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.2.5</version>
+                    <configuration>
+                        <systemPropertyVariables>
+                            <!-- Config reads $HOME/epadd.properties and CREATES it when absent,
+                                 from a static initialiser, so any test touching Config wrote into
+                                 the developer's home directory and then inherited whatever mode
+                                 they had configured. Config already honours this override; nothing
+                                 used it. Pointing it under target/ makes the suite isolated and
+                                 reproducible, and lets a test choose a mode deliberately. -->
+                            <epadd.properties>${project.build.directory}/test-epadd.properties</epadd.properties>
+                            <epadd.base.dir>${project.build.directory}/test-epadd-home</epadd.base.dir>
+                        </systemPropertyVariables>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
         <plugins>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.11</version>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals><goal>prepare-agent</goal></goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>test</phase>
+                        <goals><goal>report</goal></goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
 
     </build>
