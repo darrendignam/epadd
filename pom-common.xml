@@ -399,7 +399,10 @@
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>4.11</version>
+            <!-- 4.12 is the oldest version current Surefire releases accept, and
+                 4.13.1 fixes CVE-2020-15250, where TemporaryFolder left test data
+                 readable to other users on the machine. -->
+            <version>4.13.2</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.simplejavamail/simple-java-mail -->
         <dependency>
@@ -441,6 +444,19 @@
     <build>
         <defaultGoal>install</defaultGoal>
         <sourceDirectory>src/java</sourceDirectory>
+        <pluginManagement>
+            <plugins>
+                <!-- Pinned because Maven otherwise supplies whichever Surefire its
+                     own version happens to bind, so the tests ran under 3.2.5,
+                     3.5.4 or 3.6.0 depending on the machine, and those versions
+                     disagree about which JUnit releases they still support. -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.6.0</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
         <plugins>
         </plugins>
 
