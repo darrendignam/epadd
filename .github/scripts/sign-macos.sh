@@ -38,7 +38,7 @@ import_certificate() {
     certificate_dir=$(mktemp -d)
     certificate=$certificate_dir/certificate.p12
 
-    printf '%s' "$MACOS_CERTIFICATE" | base64 --decode > "$certificate"
+    printf '%s' "$MACOS_CERTIFICATE" | base64 -d > "$certificate"
 
     log "creating a keychain for the signing identity"
     rm -f "$keychain"

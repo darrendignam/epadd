@@ -207,16 +207,10 @@ jobs:
               icon=$PWD/epadd-launcher/launch4j-3.50-win32/epadd.ico
               ;;
             deb)
-              # There is no standalone PNG icon in either repository, and the
-              # .icns holds JPEG 2000 images that jpackage cannot read, so the
-              # 128x128 entry of the Windows icon is converted instead. Index 4
-              # is that entry; the others are 16, 32, 48 and 64 pixels.
-              icon=$PWD/epadd-icon.png
-              if command -v magick >/dev/null 2>&1; then
-                magick 'epadd-launcher/launch4j-3.50-win32/epadd.ico[4]' "png32:$icon"
-              else
-                convert 'epadd-launcher/launch4j-3.50-win32/epadd.ico[4]' "png32:$icon"
-              fi
+              # jpackage wants a PNG on Linux, which neither the launcher nor
+              # this repository otherwise has. See .github/assets/README.md for
+              # why it is committed instead of converted during the build.
+              icon=$PWD/epadd/.github/assets/epadd-icon-128.png
               ;;
           esac
           echo "ICON=$icon" >> "$GITHUB_ENV"

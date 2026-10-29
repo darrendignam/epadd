@@ -29,7 +29,7 @@ log "using $signtool"
 
 certificate=$(mktemp -d)/certificate.pfx
 trap 'rm -rf "$(dirname "$certificate")"' EXIT
-printf '%s' "$WINDOWS_CERTIFICATE" | base64 --decode > "$certificate"
+printf '%s' "$WINDOWS_CERTIFICATE" | base64 -d > "$certificate"
 
 for file in "$@"; do
     require_file "$file"
