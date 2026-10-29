@@ -46,7 +46,8 @@ printf '\n'
 printf '## Installing\n\n'
 printf '* The `.deb`, `.msi` and `.dmg` installers each bundle their own Java runtime, so nothing needs to be installed first.\n'
 printf '* `epadd.exe` and the `-standalone.jar` files do not bundle a runtime and need Java 11 or later on the machine.\n'
-printf '* The macOS installers are per architecture: `macos-arm64` for Apple silicon, `macos-x86_64` for Intel.\n'
+printf '* The installers are per architecture, because each bundles the runtime it was built with: `macos-arm64` for Apple silicon, `macos-x86_64` for Intel, `windows-arm64` for Arm machines such as Snapdragon laptops, `windows-x86_64` otherwise.\n'
+printf '* `epadd.exe` is a 32 bit x86 binary and runs on either Windows architecture, under emulation on Arm.\n'
 printf '* The `.deb` was built on Ubuntu 24.04 and its dependencies are resolved against that release. On older distributions use the standalone jar.\n'
 
 if [ "$windows_signed" != true ] || [ "$macos_signed" != true ]; then

@@ -27,7 +27,7 @@ layout `epadd-launcher/build.xml` already expects.
 
 | File | Trigger | What it does |
 | --- | --- | --- |
-| `ci.yml` | pull request, push to `main`, manual | Lints the build scripts, then builds and tests on all four platforms. Uploads nothing unless asked. |
+| `ci.yml` | pull request, push to `main`, manual | Lints the build scripts, then builds and tests on all five platforms. Uploads nothing unless asked. |
 | `release.yml` | push of a `v*` tag | Releases the tag if it is a semantic version, otherwise does nothing. |
 | `build.yml` | called by the other two | Does the actual work. Not triggered directly. |
 
@@ -94,9 +94,9 @@ alone.
 | Asset | Platforms | Bundles a Java runtime |
 | --- | --- | --- |
 | `epadd-<version>-<platform>.deb` | Linux x86_64 | yes |
-| `epadd-<version>-<platform>.msi` | Windows x86_64 | yes |
+| `epadd-<version>-<platform>.msi` | Windows x86_64, Windows arm64 | yes |
 | `epadd-<version>-<platform>.dmg` | macOS arm64, macOS x86_64 | yes |
-| `epadd-<version>.exe` | Windows x86_64 | no |
+| `epadd-<version>.exe` | Windows, either architecture | no |
 | `epadd-<version>-standalone.jar` | any | no |
 | `epadd-<version>.war` | any servlet container | no |
 
@@ -107,7 +107,9 @@ edition.
 Two caveats are worth knowing about:
 
 * The installers bundle the runner's JDK, so each one only runs on the
-  architecture it was built on. That is why macOS is built twice.
+  architecture it was built on. That is why Windows and macOS are each built
+  twice. `epadd.exe` is the exception: launch4j emits a 32 bit x86 binary
+  whatever it runs on, so it is built once, on x86_64.
 * The `.deb` has its dependencies resolved against the distribution it was built
   on, currently Ubuntu 24.04. On an older distribution the standalone jar is the
   better option.

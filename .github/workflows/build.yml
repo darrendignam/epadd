@@ -45,6 +45,10 @@ on:
 
 env:
   JAVA_VERSION: '17'
+  # Zulu rather than Temurin because Temurin publishes no Windows aarch64 build
+  # of 17, and one distribution across the whole matrix beats special casing a
+  # single job. Zulu 17 exists for all five platforms here.
+  JAVA_DISTRIBUTION: zulu
   LAUNCHER_REPOSITORY: ePADD/epadd-launcher
   LAUNCHER_REF: b010826266372d61dfe9b67762bfc99926e33752
   SETTINGS_REPOSITORY: ePADD/epadd-settings
@@ -91,6 +95,12 @@ jobs:
           - os: windows-2022
             platform: windows-x86_64
             installer-type: msi
+          # The ARM image carries no WiX, so that job installs it. epadd.exe is
+          # only built here, on x86_64: launch4j emits a 32 bit x86 binary
+          # whatever it runs on, so a second copy would be identical.
+          - os: windows-11-arm
+            platform: windows-arm64
+            installer-type: msi
           # macos-15 is the arm64 image and macos-15-intel the x86_64 one. The
           # bundled runtime comes from the runner, so each installer only works
           # on the architecture it was built on.
@@ -129,7 +139,7 @@ jobs:
       - name: Set up Java ${{ env.JAVA_VERSION }}
         uses: actions/setup-java@v6
         with:
-          distribution: temurin
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
           java-version: ${{ env.JAVA_VERSION }}
           cache: maven
           # The default only looks at pom.xml, which would leave dependency
@@ -190,8 +200,22 @@ jobs:
         working-directory: epadd-launcher
         run: bash ../epadd/.github/scripts/build-standalone.sh --workspace "$(cd .. && pwd)"
 
+      - name: Install WiX
+        if: matrix.platform == 'windows-arm64'
+        # jpackage builds an msi by calling WiX 3, which the x86_64 image carries
+        # but the ARM one does not. WiX is a .NET Framework application and runs
+        # under emulation here, which is fine because it only assembles the
+        # installer and does not go into it.
+        run: |
+          choco install wixtoolset --version 3.14.1 --no-progress --yes
+          wix_bin=$(find '/c/Program Files (x86)' -maxdepth 2 -type d -name bin -path '*WiX Toolset*' | head -1)
+          [ -n "$wix_bin" ] || { echo "WiX bin directory not found after install" >&2; exit 1; }
+          cygpath -w "$wix_bin" >> "$GITHUB_PATH"
+
       - name: Build the Windows executable
-        if: matrix.installer-type == 'msi'
+        # Only on x86_64: launch4j emits a 32 bit x86 binary whatever it runs on,
+        # so the ARM job would produce an identical file under a colliding name.
+        if: matrix.platform == 'windows-x86_64'
         working-directory: epadd-launcher
         run: bash ../epadd/.github/scripts/build-windows-exe.sh
 
@@ -252,7 +276,14 @@ jobs:
           WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
           WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
           WINDOWS_TIMESTAMP_URL: ${{ vars.WINDOWS_TIMESTAMP_URL }}
-        run: bash epadd/.github/scripts/sign-windows.sh epadd-launcher/epadd.exe dist/*.msi
+        run: |
+          # Only the x86_64 job builds epadd.exe, so the list is assembled rather
+          # than hardcoded.
+          set -- dist/*.msi
+          if [ -f epadd-launcher/epadd.exe ]; then
+            set -- "$@" epadd-launcher/epadd.exe
+          fi
+          bash epadd/.github/scripts/sign-windows.sh "$@"
 
       - name: Notarize the disk images
         if: env.SIGN_MACOS == 'true'
@@ -268,14 +299,13 @@ jobs:
       - name: Collect the remaining deliverables
         env:
           PLATFORM: ${{ matrix.platform }}
-          INSTALLER_TYPE: ${{ matrix.installer-type }}
           VERSION: ${{ needs.version.outputs.display-version }}
         run: |
-          if [ "$INSTALLER_TYPE" = msi ]; then
+          if [ -f epadd-launcher/epadd.exe ]; then
             cp epadd-launcher/epadd.exe "dist/epadd-$VERSION.exe"
           fi
           # The WARs and the standalone jars are platform independent, so they
-          # are collected once rather than four times.
+          # are collected once rather than on every platform.
           if [ "$PLATFORM" = linux-x86_64 ]; then
             cp epadd/target/epadd-0.0.1-SNAPSHOT.war "dist/epadd-$VERSION.war"
             cp epadd/target/epadd-discovery-0.0.1-SNAPSHOT.war "dist/epadd-discovery-$VERSION.war"
