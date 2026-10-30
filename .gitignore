@@ -23,4 +23,5 @@
 *.swp
 *.swo
 workspace.xml
+/docker/auth/allowed-emails.txt
 /.env

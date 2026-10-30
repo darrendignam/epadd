@@ -1,0 +1,62 @@
+# Overlay that puts oauth2-proxy (OIDC login) and Caddy (automatic HTTPS) in
+# front of ePADD. ePADD stops publishing a host port and is reachable only
+# through the proxy. See docker/README.md.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.auth.yml up -d --build
+
+services:
+  epadd:
+    ports: !reset []
+
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.12.0
+    restart: unless-stopped
+    depends_on:
+      epadd:
+        condition: service_healthy
+    environment:
+      OAUTH2_PROXY_PROVIDER: oidc
+      OAUTH2_PROXY_OIDC_ISSUER_URL: ${OIDC_ISSUER_URL:?set OIDC_ISSUER_URL}
+      OAUTH2_PROXY_CLIENT_ID: ${OIDC_CLIENT_ID:?set OIDC_CLIENT_ID}
+      OAUTH2_PROXY_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:?set OIDC_CLIENT_SECRET}
+      OAUTH2_PROXY_COOKIE_SECRET: ${OAUTH2_COOKIE_SECRET:?set OAUTH2_COOKIE_SECRET}
+      OAUTH2_PROXY_EMAIL_DOMAINS: ${OAUTH2_EMAIL_DOMAINS:-}
+      OAUTH2_PROXY_AUTHENTICATED_EMAILS_FILE: /etc/oauth2-proxy/allowed-emails.txt
+      OAUTH2_PROXY_REDIRECT_URL: https://${EPADD_DOMAIN:?set EPADD_DOMAIN}/oauth2/callback
+      OAUTH2_PROXY_UPSTREAMS: http://epadd:8080
+      OAUTH2_PROXY_HTTP_ADDRESS: 0.0.0.0:4180
+      OAUTH2_PROXY_REVERSE_PROXY: "true"
+      OAUTH2_PROXY_COOKIE_SECURE: "true"
+      OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: "true"
+      OAUTH2_PROXY_UPSTREAM_TIMEOUT: ${OAUTH2_UPSTREAM_TIMEOUT:-3600s}
+    volumes:
+      - ${OAUTH2_ALLOWED_EMAILS_FILE:-/dev/null}:/etc/oauth2-proxy/allowed-emails.txt:ro
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - oauth2-proxy
+    ports:
+      - "${CADDY_HTTP_PORT:-80}:80"
+      - "${CADDY_HTTPS_PORT:-443}:443"
+    environment:
+      EPADD_DOMAIN: ${EPADD_DOMAIN:?set EPADD_DOMAIN}
+    volumes:
+      - ./docker/auth/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  caddy-data:
+  caddy-config:
